@@ -15,7 +15,7 @@ const isHex64 = s => /^[0-9a-f]{64}$/i.test(s.trim());
 
 // ── Keypear math ─────────────────────────────────────────────────────────────
 const L = 0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3edn;
-const Pt = ed25519.Point;
+const Pt = ed25519.ExtendedPoint;
 const leToBI = b => { let n=0n; for(let i=b.length-1;i>=0;i--) n=(n<<8n)|BigInt(b[i]); return n; };
 const biToLE = (n,len) => { const a=new Uint8Array(len); for(let i=0;i<len;i++){a[i]=Number(n&0xffn);n>>=8n;} return a; };
 
@@ -23,16 +23,16 @@ function kpTweak(pub, name) {
   const nb = typeof name==='string' ? ENC.encode(name) : name;
   const seed = blake2b(new Uint8Array([...pub,...nb]), {dkLen:32});
   const scalar = leToBI(seed) % L;
-  return { scalar, pub: Pt.BASE.multiply(scalar).toBytes() };
+  return { scalar, pub: Pt.BASE.multiply(scalar).toRawBytes() };
 }
 function kpPubDerive(parentPub, name) {
   const t = kpTweak(parentPub, name);
-  return Pt.fromHex(toHex(parentPub)).add(Pt.fromHex(toHex(t.pub))).toBytes();
+  return Pt.fromHex(toHex(parentPub)).add(Pt.fromHex(toHex(t.pub))).toRawBytes();
 }
 function kpFullDerive(parentPub, parentScalar, name) {
   const t = kpTweak(parentPub, name);
   const cs = (parentScalar + t.scalar) % L;
-  return { pub: Pt.BASE.multiply(cs).toBytes(), scalar: cs };
+  return { pub: Pt.BASE.multiply(cs).toRawBytes(), scalar: cs };
 }
 function kpSign(scalar, msg) {
   const nb = typeof msg==='string' ? ENC.encode(msg) : msg;
@@ -236,7 +236,7 @@ async function deriveRootKeypair() {
   try {
     const bytes = fromHex(seedHex);
     const scalar = leToBI(bytes) % L;
-    const pub = Pt.BASE.multiply(scalar).toBytes();
+    const pub = Pt.BASE.multiply(scalar).toRawBytes();
     outRows('kp-out', [
       ['Root Public Key (hex)',  toHex(pub), 'neutral', 'pub-derive-parent,vf-pk'],
       ['Root Private Scalar',   toHex(biToLE(scalar,32)), 'secret', 'sg-privkey'],
@@ -338,7 +338,7 @@ async function buildTree() {
 
   const seedBytes = isHex64(raw) ? fromHex(raw) : await deriveSeedBytes(raw,'pbkdf2');
   const rootScalar = leToBI(seedBytes) % L;
-  const rootPub = Pt.BASE.multiply(rootScalar).toBytes();
+  const rootPub = Pt.BASE.multiply(rootScalar).toRawBytes();
 
   const nm = {};
   const mk = (id, name, pub, scalar, pid) => {
@@ -557,7 +557,7 @@ async function doTreePath() {
   try {
     const seedBytes = isHex64(seedRaw) ? fromHex(seedRaw) : await deriveSeedBytes(seedRaw,'pbkdf2');
     let scalar = leToBI(seedBytes) % L;
-    let pub = Pt.BASE.multiply(scalar).toBytes();
+    let pub = Pt.BASE.multiply(scalar).toRawBytes();
     const rows = [['root', toHex(pub), 'neutral']];
     for (const seg of path.split('/').filter(Boolean)) {
       const d = kpFullDerive(pub, scalar, seg);
@@ -576,7 +576,7 @@ async function doChainInspect() {
   try {
     const seedBytes = isHex64(seedRaw) ? fromHex(seedRaw) : await deriveSeedBytes(seedRaw,'pbkdf2');
     let scalar = leToBI(seedBytes) % L;
-    let pub = Pt.BASE.multiply(scalar).toBytes();
+    let pub = Pt.BASE.multiply(scalar).toRawBytes();
     const rows = [['[root] Public Key', toHex(pub), 'neutral'], ['[root] Private Scalar', toHex(biToLE(scalar,32)), 'secret']];
     for (const seg of path.split('/').filter(Boolean)) {
       const tweak = kpTweak(pub, seg);
@@ -650,7 +650,7 @@ async function encAESPath(encrypt) {
   if (!path||!input) return errOut('etp-out','Fill path and input');
   try {
     const seedBytes = fromHex(STATE.masterHex);
-    let scalar = leToBI(seedBytes) % L, pub = Pt.BASE.multiply(scalar).toBytes();
+    let scalar = leToBI(seedBytes) % L, pub = Pt.BASE.multiply(scalar).toRawBytes();
     for (const seg of path.split('/').filter(Boolean)) { const d=kpFullDerive(pub,scalar,seg); pub=d.pub; scalar=d.scalar; }
     const keyBytes = pub.slice(0,32);
     if (encrypt) {
@@ -696,12 +696,12 @@ async function doSign() {
       const privHex = $('sg-privkey').value.trim();
       if (!privHex) return errOut('sg-out','Enter private scalar');
       scalar = leToBI(fromHex(privHex));
-      pubHex = toHex(Pt.BASE.multiply(scalar).toBytes());
+      pubHex = toHex(Pt.BASE.multiply(scalar).toRawBytes());
     } else {
       const path = $('sg-path').value.trim() || 'app/signing';
       if (!STATE.masterHex) return errOut('sg-out','Set master seed first');
       let s2 = leToBI(fromHex(STATE.masterHex)) % L;
-      let p2 = Pt.BASE.multiply(s2).toBytes();
+      let p2 = Pt.BASE.multiply(s2).toRawBytes();
       for (const seg of path.split('/').filter(Boolean)) { const d=kpFullDerive(p2,s2,seg); p2=d.pub; s2=d.scalar; }
       scalar=s2; pubHex=toHex(p2);
     }
