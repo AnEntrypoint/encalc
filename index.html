@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>encalc — Encryption Calculator</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.5;color:#e6edf3;background:#0d1117;padding:20px}
+h1{font-size:1.5em;color:#58a6ff;margin-bottom:16px}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:20px;border-bottom:1px solid #30363d;padding-bottom:8px}
+.tab{padding:6px 14px;border-radius:6px;cursor:pointer;background:#161b22;border:1px solid #30363d;color:#8b949e;font-size:13px}
+.tab.active{background:#1f6feb;border-color:#1f6feb;color:#fff}
+.panel{display:none}.panel.active{display:block}
+.row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.col{display:flex;flex-direction:column;gap:6px;flex:1;min-width:200px}
+label{font-size:12px;color:#8b949e}
+input,select,textarea{background:#161b22;border:1px solid #30363d;border-radius:6px;color:#e6edf3;padding:8px;font-size:13px;width:100%;font-family:inherit}
+textarea{resize:vertical;min-height:80px;font-family:'SFMono-Regular',Consolas,monospace}
+button{background:#1f6feb;border:none;border-radius:6px;color:#fff;padding:8px 16px;cursor:pointer;font-size:13px}
+button:hover{background:#388bfd}
+button.sec{background:#21262d;border:1px solid #30363d;color:#e6edf3}
+button.sec:hover{background:#30363d}
+.out{background:#161b22;border:1px solid #30363d;border-radius:6px;padding:10px;font-family:'SFMono-Regular',Consolas,monospace;font-size:12px;word-break:break-all;white-space:pre-wrap;min-height:48px;color:#aff;position:relative}
+.out .cp{position:absolute;top:6px;right:6px;font-size:11px;padding:3px 8px}
+.err{color:#f85149;background:#161b22;border:1px solid #f8514933;border-radius:6px;padding:8px;font-size:12px;margin-top:6px}
+.section{margin-bottom:16px}
+.hint{font-size:11px;color:#6e7681;margin-top:2px}
+</style>
+</head>
+<body>
+<h1>⚡ encalc</h1>
+<div class="tabs">
+  <div class="tab active" onclick="show('keygen')">Key Gen</div>
+  <div class="tab" onclick="show('encrypt')">Encrypt / Decrypt</div>
+  <div class="tab" onclick="show('mnemonic')">Mnemonic</div>
+  <div class="tab" onclick="show('keypair')">Seed → Keypair</div>
+  <div class="tab" onclick="show('derive')">Derive Keys</div>
+</div>
+
+<div id="keygen" class="panel active">
+  <div class="section row">
+    <div class="col">
+      <label>Algorithm</label>
+      <select id="kg-alg">
+        <option value="AES-256">AES-256</option>
+        <option value="AES-128">AES-128</option>
+        <option value="RSA-2048">RSA-2048</option>
+        <option value="RSA-4096">RSA-4096</option>
+        <option value="ECDH-P256">ECDH P-256</option>
+        <option value="ECDH-P384">ECDH P-384</option>
+        <option value="Ed25519">Ed25519</option>
+      </select>
+    </div>
+    <div class="col" style="justify-content:flex-end">
+      <button onclick="genKey()">Generate</button>
+    </div>
+  </div>
+  <div id="kg-out"></div>
+</div>
+
+<div id="encrypt" class="panel">
+  <div class="section">
+    <div class="row">
+      <div class="col">
+        <label>Mode</label>
+        <select id="enc-mode" onchange="updateEncUI()">
+          <option value="aes-pass">AES-GCM (password)</option>
+          <option value="aes-key">AES-GCM (hex key)</option>
+          <option value="rsa-pub">RSA-OAEP</option>
+        </select>
+      </div>
+      <div class="col">
+        <label id="enc-key-label">Password</label>
+        <input id="enc-key" type="text" placeholder="password or key...">
+      </div>
+    </div>
+    <div class="row">
+      <div class="col">
+        <label>Input text</label>
+        <textarea id="enc-input" placeholder="plaintext or base64 ciphertext"></textarea>
+      </div>
+    </div>
+    <div class="row">
+      <button onclick="doEncrypt()">Encrypt</button>
+      <button class="sec" onclick="doDecrypt()">Decrypt</button>
+    </div>
+    <div id="enc-out" class="section"></div>
+  </div>
+</div>
+
+<div id="mnemonic" class="panel">
+  <div class="section row">
+    <div class="col">
+      <label>Word count</label>
+      <select id="mn-count"><option>12</option><option>24</option></select>
+    </div>
+    <div class="col" style="justify-content:flex-end">
+      <button onclick="genMnemonic()">Generate</button>
+    </div>
+  </div>
+  <div class="section">
+    <label>Mnemonic (generate above or paste)</label>
+    <textarea id="mn-words" rows="3" placeholder="word1 word2 word3 ..."></textarea>
+    <div class="hint">Passphrase (optional, BIP39 style)</div>
+    <input id="mn-pass" type="text" placeholder="optional passphrase">
+    <button style="margin-top:8px" onclick="mnToSeed()">→ Derive Seed</button>
+  </div>
+  <div id="mn-out"></div>
+</div>
+
+<div id="keypair" class="panel">
+  <div class="section">
+    <label>Passphrase or hex seed</label>
+    <textarea id="kp-input" rows="2" placeholder="any text or 64-char hex"></textarea>
+    <div class="hint">Algorithm</div>
+    <select id="kp-alg">
+      <option value="Ed25519">Ed25519 (sign)</option>
+      <option value="ECDH">ECDH P-256 (DH)</option>
+    </select>
+    <button style="margin-top:8px" onclick="seedToKeypair()">→ Derive Keypair</button>
+  </div>
+  <div id="kp-out"></div>
+</div>
+
+<div id="derive" class="panel">
+  <div class="section">
+    <label>Master seed (hex or passphrase)</label>
+    <input id="dv-seed" type="text" placeholder="seed or passphrase">
+  </div>
+  <div class="section row">
+    <div class="col">
+      <label>Mechanism</label>
+      <select id="dv-mech">
+        <option value="hkdf">HKDF-SHA256</option>
+        <option value="pbkdf2">PBKDF2-SHA256</option>
+        <option value="tree">Key Tree (keypear-style)</option>
+      </select>
+    </div>
+    <div class="col">
+      <label>Context / path (e.g. <code>app/user/v1</code>)</label>
+      <input id="dv-info" type="text" placeholder="info string or path">
+    </div>
+  </div>
+  <div id="dv-pbkdf2-opts" style="display:none" class="row">
+    <div class="col">
+      <label>Salt</label><input id="dv-salt" type="text" placeholder="salt string">
+    </div>
+    <div class="col">
+      <label>Iterations</label><input id="dv-iter" type="number" value="100000" min="1000" max="10000000">
+    </div>
+  </div>
+  <button onclick="deriveKey()">Derive</button>
+  <div id="dv-out"></div>
+</div>
+
+<script src="bip39.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
