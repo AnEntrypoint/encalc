@@ -574,7 +574,7 @@ svg .add-btn text { fill: var(--blue2); font-size: 14px; text-anchor: middle; do
 
 <!-- ══ ENCRYPT / DECRYPT ════════════════════════════ -->
 <div id="encrypt" class="panel">
-  <div class="tabs">
+  <div class="tabs" id="encrypt-tabs">
     <div class="tab on" onclick="switchTab('encrypt','aes-pw')">AES + Password</div>
     <div class="tab" onclick="switchTab('encrypt','aes-key')">AES + Key</div>
     <div class="tab" onclick="switchTab('encrypt','aes-path')">AES + Tree Path</div>
@@ -638,7 +638,7 @@ svg .add-btn text { fill: var(--blue2); font-size: 14px; text-anchor: middle; do
     <div class="card">
       <div class="card-hd"><div class="ct">Sign Message</div></div>
       <div class="card-body">
-        <div class="tabs" style="margin:-14px -14px 10px; border-radius: var(--r2) var(--r2) 0 0">
+        <div class="tabs" id="sign-tabs" style="margin:-14px -14px 10px; border-radius: var(--r2) var(--r2) 0 0">
           <div class="tab on" onclick="switchTab('sign','sign-path')">Via Tree Path</div>
           <div class="tab" onclick="switchTab('sign','sign-key')">Via Raw Key</div>
         </div>

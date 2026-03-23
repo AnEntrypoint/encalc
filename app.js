@@ -94,26 +94,33 @@ function switchTab(panel, tab) {
   });
 }
 
+const _vals = {};
+let _vk = 0;
+function _storeVal(v) { const k = 'v'+(++_vk); _vals[k]=v; return k; }
+
 function outRows(id, rows) {
   $(id).innerHTML = `<div class="out-area">${rows.map(r => {
     if (!r) return '';
     const [lbl, val, ...meta] = r;
     const cls = meta.includes('secret') ? ' secret' : meta.includes('neutral') ? ' neutral' : meta.includes('plain') ? ' plain' : '';
     const targets = meta.filter(m => m && m!=='secret' && m!=='neutral' && m!=='plain');
-    const isLong = val && val.length > 60;
+    const k = _storeVal(val);
     return `<div class="ob${cls}">
       <div class="ob-hd">
         <span class="ob-lbl">${esc(lbl)}</span>
         <div class="ob-acts">
-          ${targets.map(t=>`<button onclick="pipe('${esc(val)}','${esc(t)}')">→ ${esc(t.split(',')[0].split('-').slice(-1)[0])}</button>`).join('')}
-          <button onclick="pin('${esc(val)}','${esc(lbl)}')">📌</button>
-          <button onclick="cp(this,'${esc(val)}')">copy</button>
+          ${targets.map(t=>`<button onclick="_pipe('${k}','${esc(t)}')">→ ${esc(t.split(',')[0].split('-').slice(-1)[0])}</button>`).join('')}
+          <button onclick="_pin('${k}','${esc(lbl)}')">📌</button>
+          <button onclick="_cp(this,'${k}')">copy</button>
         </div>
       </div>
       <pre>${esc(val)}</pre>
     </div>`;
   }).join('')}</div>`;
 }
+function _pipe(k, targets) { pipe(_vals[k], targets); }
+function _pin(k, label)    { pin(_vals[k], label); }
+function _cp(btn, k)       { cp(btn, _vals[k]); }
 
 function errOut(id, msg) { $(id).innerHTML = `<div class="err-box">⚠ ${esc(msg)}</div>`; }
 function okOut(id, msg)  { $(id).innerHTML = `<div class="ok-box">✓ ${esc(msg)}</div>`; }
@@ -853,6 +860,7 @@ function clearAll() {
 // ── Expose to HTML onclick ────────────────────────────────────────────────────
 Object.assign(window, {
   show, switchTab, cp, pipe, pin, useClip, copyMaster, renderClip,
+  _pipe, _pin, _cp, _vals,
   setMaster, genRandSeed, deriveRootKeypair,
   genMnemonic, mnToSeed, mnToMaster, countWords,
   kgAlgChange, genKey,
