@@ -3,157 +3,264 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>encalc — Encryption Calculator</title>
+<title>encalc</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.5;color:#e6edf3;background:#0d1117;padding:20px}
-h1{font-size:1.5em;color:#58a6ff;margin-bottom:16px}
-.tabs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:20px;border-bottom:1px solid #30363d;padding-bottom:8px}
-.tab{padding:6px 14px;border-radius:6px;cursor:pointer;background:#161b22;border:1px solid #30363d;color:#8b949e;font-size:13px}
-.tab.active{background:#1f6feb;border-color:#1f6feb;color:#fff}
-.panel{display:none}.panel.active{display:block}
-.row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap}
-.col{display:flex;flex-direction:column;gap:6px;flex:1;min-width:200px}
-label{font-size:12px;color:#8b949e}
-input,select,textarea{background:#161b22;border:1px solid #30363d;border-radius:6px;color:#e6edf3;padding:8px;font-size:13px;width:100%;font-family:inherit}
-textarea{resize:vertical;min-height:80px;font-family:'SFMono-Regular',Consolas,monospace}
-button{background:#1f6feb;border:none;border-radius:6px;color:#fff;padding:8px 16px;cursor:pointer;font-size:13px}
-button:hover{background:#388bfd}
-button.sec{background:#21262d;border:1px solid #30363d;color:#e6edf3}
-button.sec:hover{background:#30363d}
-.out{background:#161b22;border:1px solid #30363d;border-radius:6px;padding:10px;font-family:'SFMono-Regular',Consolas,monospace;font-size:12px;word-break:break-all;white-space:pre-wrap;min-height:48px;color:#aff;position:relative}
-.out .cp{position:absolute;top:6px;right:6px;font-size:11px;padding:3px 8px}
-.err{color:#f85149;background:#161b22;border:1px solid #f8514933;border-radius:6px;padding:8px;font-size:12px;margin-top:6px}
-.section{margin-bottom:16px}
-.hint{font-size:11px;color:#6e7681;margin-top:2px}
+:root{--bg:#0d1117;--bg2:#161b22;--bg3:#21262d;--bd:#30363d;--txt:#e6edf3;--dim:#8b949e;--blue:#1f6feb;--blue2:#388bfd;--green:#3fb950;--orange:#d29922;--red:#f85149;--purple:#bc8cff;--teal:#39d353}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:var(--txt);background:var(--bg);min-height:100vh;display:grid;grid-template-columns:220px 1fr;grid-template-rows:48px 1fr}
+header{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:0 20px;background:var(--bg2);border-bottom:1px solid var(--bd);font-weight:600;font-size:16px;color:var(--blue2)}
+header span{color:var(--dim);font-weight:400;font-size:12px;margin-left:4px}
+nav{background:var(--bg2);border-right:1px solid var(--bd);padding:12px 0;display:flex;flex-direction:column;gap:2px}
+.nav-item{padding:8px 16px;cursor:pointer;border-radius:0;color:var(--dim);font-size:13px;display:flex;align-items:center;gap:8px;border-left:3px solid transparent}
+.nav-item:hover{background:var(--bg3);color:var(--txt)}
+.nav-item.active{color:var(--txt);border-left-color:var(--blue2);background:var(--bg3)}
+.nav-sep{height:1px;background:var(--bd);margin:8px 12px}
+main{overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:0}
+.panel{display:none;flex-direction:column;gap:16px;max-width:900px}
+.panel.active{display:flex}
+h2{font-size:15px;font-weight:600;color:var(--txt);margin-bottom:4px}
+.card{background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.card-title{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--dim)}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.col{display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px}
+label{font-size:11px;color:var(--dim)}
+input,select,textarea{background:var(--bg3);border:1px solid var(--bd);border-radius:6px;color:var(--txt);padding:7px 10px;font-size:13px;width:100%;font-family:'SFMono-Regular',Consolas,monospace;outline:none;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--blue2)}
+textarea{resize:vertical;min-height:72px;line-height:1.5}
+select{cursor:pointer}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{background:var(--blue);border:none;border-radius:6px;color:#fff;padding:7px 16px;cursor:pointer;font-size:13px;white-space:nowrap;transition:background .15s}
+button:hover{background:var(--blue2)}
+button.ghost{background:var(--bg3);border:1px solid var(--bd);color:var(--txt)}
+button.ghost:hover{background:var(--bd)}
+button.green{background:#1a4721;border:1px solid var(--green);color:var(--green)}
+button.green:hover{background:#236230}
+button.sm{padding:4px 10px;font-size:11px}
+.out-block{background:var(--bg3);border:1px solid var(--bd);border-radius:6px;font-family:'SFMono-Regular',Consolas,monospace;font-size:12px;color:var(--teal);line-height:1.6;position:relative}
+.out-block pre{padding:10px;word-break:break-all;white-space:pre-wrap;max-height:180px;overflow-y:auto}
+.out-block .out-label{font-size:10px;color:var(--dim);padding:6px 10px 0;font-family:sans-serif;display:flex;justify-content:space-between;align-items:center}
+.out-block .cp-btn{font-size:10px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd);color:var(--dim);cursor:pointer;border-radius:4px}
+.out-block .cp-btn:hover{color:var(--txt)}
+.err{color:var(--red);background:#1c0a0a;border:1px solid #5a1010;border-radius:6px;padding:8px 12px;font-size:12px}
+.workflow-arrow{text-align:center;color:var(--dim);font-size:18px;margin:-4px 0}
+.use-btn{font-size:11px;padding:3px 10px;background:var(--bg3);border:1px solid var(--bd);color:var(--blue2);cursor:pointer;border-radius:4px;margin-left:8px}
+.use-btn:hover{background:var(--bg2);border-color:var(--blue2)}
+/* Key Tree */
+#tree-canvas-wrap{background:var(--bg3);border:1px solid var(--bd);border-radius:8px;overflow:auto;position:relative;min-height:300px}
+#tree-canvas-wrap svg{display:block}
+.tree-node{cursor:pointer}
+.tree-node rect{fill:var(--bg2);stroke:var(--bd);stroke-width:1.5;rx:6}
+.tree-node.root rect{stroke:var(--blue2);stroke-width:2}
+.tree-node.selected rect{stroke:var(--orange);stroke-width:2}
+.tree-node text{fill:var(--txt);font-size:11px;font-family:'SFMono-Regular',Consolas,monospace}
+.tree-node .key-preview{fill:var(--teal);font-size:10px}
+.tree-node .node-label{fill:var(--dim);font-size:10px}
+.tree-edge{stroke:var(--bd);stroke-width:1.5;fill:none}
+.add-btn-g circle{fill:var(--bg3);stroke:var(--blue);stroke-width:1.5;cursor:pointer}
+.add-btn-g circle:hover{fill:var(--bg2)}
+.add-btn-g text{fill:var(--blue2);font-size:14px;cursor:pointer;dominant-baseline:middle;text-anchor:middle}
+#node-detail{background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:4px;background:var(--bg3);border:1px solid var(--bd);color:var(--dim)}
+.badge.blue{border-color:var(--blue);color:var(--blue2)}
+.badge.green{border-color:var(--green);color:var(--green)}
 </style>
 </head>
 <body>
-<h1>⚡ encalc</h1>
-<div class="tabs">
-  <div class="tab active" onclick="show('keygen')">Key Gen</div>
-  <div class="tab" onclick="show('encrypt')">Encrypt / Decrypt</div>
-  <div class="tab" onclick="show('mnemonic')">Mnemonic</div>
-  <div class="tab" onclick="show('keypair')">Seed → Keypair</div>
-  <div class="tab" onclick="show('derive')">Derive Keys</div>
-</div>
+<header>⚡ encalc <span>browser-based crypto toolkit</span></header>
+<nav>
+  <div class="nav-item active" onclick="show('workflow')">🔄 Workflow</div>
+  <div class="nav-item" onclick="show('tree')">🌳 Key Tree</div>
+  <div class="nav-sep"></div>
+  <div class="nav-item" onclick="show('mnemonic')">🎲 Mnemonic</div>
+  <div class="nav-item" onclick="show('keygen')">🔑 Key Gen</div>
+  <div class="nav-item" onclick="show('encrypt')">🔒 Encrypt / Decrypt</div>
+  <div class="nav-item" onclick="show('derive')">🔗 Derive</div>
+</nav>
+<main>
 
-<div id="keygen" class="panel active">
-  <div class="section row">
-    <div class="col">
-      <label>Algorithm</label>
-      <select id="kg-alg">
-        <option value="AES-256">AES-256</option>
-        <option value="AES-128">AES-128</option>
-        <option value="RSA-2048">RSA-2048</option>
-        <option value="RSA-4096">RSA-4096</option>
-        <option value="ECDH-P256">ECDH P-256</option>
-        <option value="ECDH-P384">ECDH P-384</option>
-        <option value="Ed25519">Ed25519</option>
-      </select>
-    </div>
-    <div class="col" style="justify-content:flex-end">
-      <button onclick="genKey()">Generate</button>
-    </div>
-  </div>
-  <div id="kg-out"></div>
-</div>
-
-<div id="encrypt" class="panel">
-  <div class="section">
+<!-- WORKFLOW -->
+<div id="workflow" class="panel active">
+  <div class="card">
+    <div class="card-title">Step 1 — Master Seed</div>
     <div class="row">
+      <div class="col" style="flex:2">
+        <label>Passphrase, mnemonic, or hex seed</label>
+        <textarea id="wf-seed" rows="2" placeholder="Enter passphrase, paste mnemonic words, or 64-char hex…"></textarea>
+      </div>
       <div class="col">
-        <label>Mode</label>
-        <select id="enc-mode" onchange="updateEncUI()">
-          <option value="aes-pass">AES-GCM (password)</option>
-          <option value="aes-key">AES-GCM (hex key)</option>
-          <option value="rsa-pub">RSA-OAEP</option>
+        <label>Strengthen with</label>
+        <select id="wf-kdf">
+          <option value="pbkdf2">PBKDF2 (password)</option>
+          <option value="hex">Raw hex seed</option>
+          <option value="hkdf">HKDF expand</option>
+        </select>
+        <label style="margin-top:4px">Salt / context</label>
+        <input id="wf-salt" type="text" value="encalc" placeholder="salt">
+      </div>
+    </div>
+    <div class="btn-row">
+      <button onclick="wfStep1()">Derive Master Seed →</button>
+    </div>
+    <div id="wf-seed-out"></div>
+  </div>
+  <div class="workflow-arrow">↓</div>
+  <div class="card">
+    <div class="card-title">Step 2 — Keypair from Seed</div>
+    <div class="row">
+      <div class="col"><label>Seed (auto-filled or paste)</label><input id="wf-kp-seed" placeholder="64-char hex seed from step 1"></div>
+      <div class="col"><label>Algorithm</label>
+        <select id="wf-kp-alg">
+          <option value="Ed25519">Ed25519 (sign/verify)</option>
+          <option value="ECDH">ECDH P-256 (key exchange)</option>
         </select>
       </div>
-      <div class="col">
-        <label id="enc-key-label">Password</label>
-        <input id="enc-key" type="text" placeholder="password or key...">
-      </div>
     </div>
+    <div class="btn-row"><button onclick="wfStep2()">Derive Keypair →</button></div>
+    <div id="wf-kp-out"></div>
+  </div>
+  <div class="workflow-arrow">↓</div>
+  <div class="card">
+    <div class="card-title">Step 3 — Derive Child Keys</div>
     <div class="row">
-      <div class="col">
-        <label>Input text</label>
-        <textarea id="enc-input" placeholder="plaintext or base64 ciphertext"></textarea>
-      </div>
+      <div class="col"><label>Master seed (auto-filled)</label><input id="wf-dk-seed" placeholder="hex seed"></div>
+      <div class="col"><label>Child paths (one per line)</label><textarea id="wf-dk-paths" rows="3" placeholder="app/signing&#10;app/encryption&#10;app/auth/v2">app/signing
+app/encryption
+app/auth/v2</textarea></div>
     </div>
+    <div class="btn-row"><button onclick="wfStep3()">Derive All Children →</button>
+      <button class="ghost" onclick="wfToTree()">→ Open in Key Tree</button>
+    </div>
+    <div id="wf-dk-out"></div>
+  </div>
+  <div class="workflow-arrow">↓</div>
+  <div class="card">
+    <div class="card-title">Step 4 — Encrypt with Derived Key</div>
     <div class="row">
-      <button onclick="doEncrypt()">Encrypt</button>
-      <button class="sec" onclick="doDecrypt()">Decrypt</button>
+      <div class="col"><label>AES key (hex, auto-fill from child key)</label><input id="wf-enc-key" placeholder="64-char hex AES-256 key"></div>
+      <div class="col" style="flex:2"><label>Plaintext to encrypt</label><textarea id="wf-enc-plain" rows="2" placeholder="message to encrypt…"></textarea></div>
     </div>
-    <div id="enc-out" class="section"></div>
+    <div class="btn-row">
+      <button onclick="wfEncrypt()">Encrypt →</button>
+      <button class="ghost" onclick="wfDecrypt()">Decrypt</button>
+    </div>
+    <div id="wf-enc-out"></div>
   </div>
 </div>
 
+<!-- KEY TREE -->
+<div id="tree" class="panel">
+  <div class="card">
+    <div class="card-title">Key Tree — Visualise Derivation Hierarchy</div>
+    <div class="row">
+      <div class="col"><label>Root seed or passphrase</label><input id="tree-seed" placeholder="hex or passphrase" value="my-master-secret"></div>
+      <div class="col"><label>Child paths (slash-separated levels)</label><input id="tree-paths" placeholder="app/signing, app/enc, vault/cold" value="app/signing,app/encryption,vault/cold,vault/hot"></div>
+    </div>
+    <div class="btn-row">
+      <button onclick="buildTree()">Build Tree</button>
+      <button class="ghost" onclick="expandAll()">Expand All Keys</button>
+      <button class="ghost" onclick="collapseAll()">Collapse</button>
+    </div>
+  </div>
+  <div id="tree-canvas-wrap"><svg id="tree-svg" width="860" height="400"></svg></div>
+  <div id="node-detail" style="display:none">
+    <div class="card-title">Selected Node</div>
+    <div id="nd-content"></div>
+  </div>
+</div>
+
+<!-- MNEMONIC -->
 <div id="mnemonic" class="panel">
-  <div class="section row">
-    <div class="col">
-      <label>Word count</label>
-      <select id="mn-count"><option>12</option><option>24</option></select>
+  <div class="card">
+    <div class="card-title">Generate Mnemonic</div>
+    <div class="row">
+      <div class="col"><label>Word count</label><select id="mn-count"><option>12</option><option>24</option></select></div>
+      <div class="col" style="justify-content:flex-end;flex-direction:row;align-items:flex-end"><button onclick="genMnemonic()">Generate</button></div>
     </div>
-    <div class="col" style="justify-content:flex-end">
-      <button onclick="genMnemonic()">Generate</button>
+    <div id="mn-gen-out"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Mnemonic → Seed (BIP39)</div>
+    <div class="col"><label>Mnemonic words</label><textarea id="mn-words" rows="3" placeholder="word1 word2 word3 …"></textarea></div>
+    <div class="row">
+      <div class="col"><label>Passphrase (optional)</label><input id="mn-pass" type="text" placeholder="optional BIP39 passphrase"></div>
+      <div class="col" style="justify-content:flex-end;flex-direction:row;align-items:flex-end"><button onclick="mnToSeed()">Derive Seed →</button></div>
     </div>
+    <div id="mn-out"></div>
   </div>
-  <div class="section">
-    <label>Mnemonic (generate above or paste)</label>
-    <textarea id="mn-words" rows="3" placeholder="word1 word2 word3 ..."></textarea>
-    <div class="hint">Passphrase (optional, BIP39 style)</div>
-    <input id="mn-pass" type="text" placeholder="optional passphrase">
-    <button style="margin-top:8px" onclick="mnToSeed()">→ Derive Seed</button>
-  </div>
-  <div id="mn-out"></div>
 </div>
 
-<div id="keypair" class="panel">
-  <div class="section">
-    <label>Passphrase or hex seed</label>
-    <textarea id="kp-input" rows="2" placeholder="any text or 64-char hex"></textarea>
-    <div class="hint">Algorithm</div>
-    <select id="kp-alg">
-      <option value="Ed25519">Ed25519 (sign)</option>
-      <option value="ECDH">ECDH P-256 (DH)</option>
-    </select>
-    <button style="margin-top:8px" onclick="seedToKeypair()">→ Derive Keypair</button>
+<!-- KEY GEN -->
+<div id="keygen" class="panel">
+  <div class="card">
+    <div class="card-title">Generate Random Key</div>
+    <div class="row">
+      <div class="col"><label>Algorithm</label>
+        <select id="kg-alg">
+          <option value="AES-256">AES-256-GCM</option>
+          <option value="AES-128">AES-128-GCM</option>
+          <option value="RSA-2048">RSA-2048 OAEP</option>
+          <option value="RSA-4096">RSA-4096 OAEP</option>
+          <option value="ECDH-P256">ECDH P-256</option>
+          <option value="ECDH-P384">ECDH P-384</option>
+          <option value="Ed25519">Ed25519</option>
+        </select>
+      </div>
+      <div class="col" style="justify-content:flex-end;flex-direction:row;align-items:flex-end"><button onclick="genKey()">Generate</button></div>
+    </div>
+    <div id="kg-out"></div>
   </div>
-  <div id="kp-out"></div>
 </div>
 
+<!-- ENCRYPT -->
+<div id="encrypt" class="panel">
+  <div class="card">
+    <div class="card-title">Encrypt / Decrypt</div>
+    <div class="row">
+      <div class="col"><label>Mode</label>
+        <select id="enc-mode" onchange="updateEncUI()">
+          <option value="aes-pass">AES-GCM + password (PBKDF2)</option>
+          <option value="aes-key">AES-GCM + hex key</option>
+          <option value="rsa-pub">RSA-OAEP + PEM key</option>
+        </select>
+      </div>
+      <div class="col"><label id="enc-key-label">Password</label><input id="enc-key" type="text" placeholder="password or key…"></div>
+    </div>
+    <div class="col"><label>Input</label><textarea id="enc-input" rows="4" placeholder="plaintext to encrypt — or base64 ciphertext to decrypt"></textarea></div>
+    <div class="btn-row">
+      <button onclick="doEncrypt()">Encrypt →</button>
+      <button class="ghost" onclick="doDecrypt()">← Decrypt</button>
+    </div>
+    <div id="enc-out"></div>
+  </div>
+</div>
+
+<!-- DERIVE -->
 <div id="derive" class="panel">
-  <div class="section">
-    <label>Master seed (hex or passphrase)</label>
-    <input id="dv-seed" type="text" placeholder="seed or passphrase">
+  <div class="card">
+    <div class="card-title">Key Derivation</div>
+    <div class="row">
+      <div class="col" style="flex:2"><label>Seed or passphrase</label><input id="dv-seed" placeholder="hex or text"></div>
+      <div class="col"><label>Mechanism</label>
+        <select id="dv-mech" onchange="dvMechChange()">
+          <option value="hkdf">HKDF-SHA256</option>
+          <option value="pbkdf2">PBKDF2-SHA256</option>
+          <option value="tree">Key Tree path</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col"><label>Info / path</label><input id="dv-info" placeholder="context string or a/b/c path for tree"></div>
+      <div id="dv-pbkdf2-opts" style="display:none;flex:1;gap:8px" class="row">
+        <div class="col"><label>Salt</label><input id="dv-salt" placeholder="salt"></div>
+        <div class="col"><label>Iterations</label><input id="dv-iter" type="number" value="100000"></div>
+      </div>
+    </div>
+    <div class="btn-row"><button onclick="deriveKey()">Derive →</button></div>
+    <div id="dv-out"></div>
   </div>
-  <div class="section row">
-    <div class="col">
-      <label>Mechanism</label>
-      <select id="dv-mech">
-        <option value="hkdf">HKDF-SHA256</option>
-        <option value="pbkdf2">PBKDF2-SHA256</option>
-        <option value="tree">Key Tree (keypear-style)</option>
-      </select>
-    </div>
-    <div class="col">
-      <label>Context / path (e.g. <code>app/user/v1</code>)</label>
-      <input id="dv-info" type="text" placeholder="info string or path">
-    </div>
-  </div>
-  <div id="dv-pbkdf2-opts" style="display:none" class="row">
-    <div class="col">
-      <label>Salt</label><input id="dv-salt" type="text" placeholder="salt string">
-    </div>
-    <div class="col">
-      <label>Iterations</label><input id="dv-iter" type="number" value="100000" min="1000" max="10000000">
-    </div>
-  </div>
-  <button onclick="deriveKey()">Derive</button>
-  <div id="dv-out"></div>
 </div>
 
+</main>
 <script src="bip39.js"></script>
 <script src="app.js"></script>
 </body>
