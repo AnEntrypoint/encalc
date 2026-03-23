@@ -22,7 +22,11 @@ const biToLE = (n,len) => { const a=new Uint8Array(len); for(let i=0;i<len;i++){
 function kpTweak(pub, name) {
   const nb = typeof name==='string' ? ENC.encode(name) : name;
   const seed = blake2b(new Uint8Array([...pub,...nb]), {dkLen:32});
-  const scalar = leToBI(seed) % L;
+  // Clamp per keypear / Ed25519 convention (mirrors extension_tweak_ed25519_base)
+  seed[0]  &= 0xf8;  // clear bits 0-2 (cofactor)
+  seed[31] &= 0x7f;  // clear bit 255
+  seed[31] |= 0x40;  // set bit 254
+  const scalar = leToBI(seed);
   return { scalar, pub: Pt.BASE.multiply(scalar).toRawBytes() };
 }
 function kpPubDerive(parentPub, name) {
@@ -34,9 +38,18 @@ function kpFullDerive(parentPub, parentScalar, name) {
   const cs = (parentScalar + t.scalar) % L;
   return { pub: Pt.BASE.multiply(cs).toRawBytes(), scalar: cs };
 }
-function kpSign(scalar, msg) {
+async function kpSign(scalar, msg) {
   const nb = typeof msg==='string' ? ENC.encode(msg) : msg;
-  return ed25519.sign(nb, biToLE(scalar,32));
+  const pubBytes = Pt.BASE.multiply(scalar).toRawBytes();
+  const scalarBytes = biToLE(scalar, 32);
+  // Deterministic nonce: BLAKE2b(scalar || msg) — avoids needing a seed prefix
+  const r = leToBI(blake2b(new Uint8Array([...scalarBytes, ...nb]), {dkLen:64})) % L;
+  const R = Pt.BASE.multiply(r).toRawBytes();
+  // Challenge: SHA-512(R || pubKey || msg) mod L — must match ed25519.verify internals
+  const kBytes = new Uint8Array(await crypto.subtle.digest('SHA-512', new Uint8Array([...R, ...pubBytes, ...nb])));
+  const k = leToBI(kBytes) % L;
+  const S = (r + k * scalar) % L;
+  return new Uint8Array([...R, ...biToLE(S, 32)]);
 }
 function kpVerify(pubBytes, msg, sigBytes) {
   try { return ed25519.verify(sigBytes, typeof msg==='string'?ENC.encode(msg):msg, pubBytes); }
@@ -705,7 +718,7 @@ async function doSign() {
       for (const seg of path.split('/').filter(Boolean)) { const d=kpFullDerive(p2,s2,seg); p2=d.pub; s2=d.scalar; }
       scalar=s2; pubHex=toHex(p2);
     }
-    const sig = kpSign(scalar, msg);
+    const sig = await kpSign(scalar, msg);
     const sigHex = toHex(sig);
     $('vf-pk').value=pubHex; $('vf-sig').value=sigHex; $('vf-msg').value=msg;
     outRows('sg-out', [
