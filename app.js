@@ -1,5 +1,6 @@
 import { ed25519 } from 'https://cdn.jsdelivr.net/npm/@noble/curves@1.8.1/esm/ed25519.js';
 import { blake2b } from 'https://cdn.jsdelivr.net/npm/@noble/hashes@1.8.0/esm/blake2.js';
+import { sha512 } from 'https://cdn.jsdelivr.net/npm/@noble/hashes@1.8.0/esm/sha2.js';
 
 // ── Primitives ───────────────────────────────────────────────────────────────
 const SC = crypto.subtle, ENC = new TextEncoder(), DEC = new TextDecoder();
@@ -21,13 +22,14 @@ const biToLE = (n,len) => { const a=new Uint8Array(len); for(let i=0;i<len;i++){
 
 function kpTweak(pub, name) {
   const nb = typeof name==='string' ? ENC.encode(name) : name;
+  // keypear: tweakKeyPair = blake2b(pub||name) → extension_tweak_ed25519_base(scalar, pk, seed)
+  // extension_tweak_ed25519_base does SHA-512(seed), takes first 32 bytes,
+  // then clamps bits 254-255 only (no cofactor byte[0] &= 0xf8 — tweaks don't need it)
   const seed = blake2b(new Uint8Array([...pub,...nb]), {dkLen:32});
-  // Clamp per keypear / Ed25519 convention (mirrors extension_tweak_ed25519_base)
-  seed[0]  &= 0xf8;  // clear bits 0-2 (cofactor)
-  seed[31] &= 0x7f;  // clear bit 255
-  seed[31] |= 0x40;  // set bit 254
-  const scalar = leToBI(seed);
-  return { scalar, pub: Pt.BASE.multiply(scalar).toRawBytes() };
+  const h = sha512(seed).slice(0, 32);
+  h[31] &= 0x7f;  // clear bit 255 (mirrors extension_tweak_ed25519_base exactly)
+  const scalar = leToBI(h);
+  return { scalar, pub: Pt.BASE.multiply(scalar % L).toRawBytes() };
 }
 function kpPubDerive(parentPub, name) {
   const t = kpTweak(parentPub, name);
