@@ -1,2 +1,5 @@
 .prd
 node_modules/
+.gm-stop-verified
+
+.code-search/

@@ -87,11 +87,12 @@ function loadSt() {
 }
 
 // ── UI core ───────────────────────────────────────────────────────────────────
-const PANELS = ['seed','mnemonic','keygen','tree','derive','encrypt','sign','dh','hash','convert','random'];
+const PANELS = ['seed','mnemonic','keygen','tree','derive','encrypt','sign','dh','totp','hash','convert','random'];
 
 function show(id) {
   PANELS.forEach(p => { $(p).classList.toggle('on', p===id); });
   document.querySelectorAll('.ni').forEach(el => el.classList.toggle('on', el.id==='nav-'+id));
+  document.querySelector('nav').classList.remove('open');
 }
 
 function switchTab(panel, tab) {
@@ -150,7 +151,7 @@ function setBusy(btnEl, on) {
 }
 
 function cp(btn, val) {
-  navigator.clipboard.writeText(val).then(() => { btn.textContent='✓'; setTimeout(()=>btn.textContent='copy',1500); });
+  navigator.clipboard.writeText(val).then(() => { btn.textContent='✓'; setTimeout(()=>btn.textContent='copy',1500); toast('Copied to clipboard','ok'); });
 }
 
 function pipe(val, targets) {
@@ -490,18 +491,19 @@ function selectTreeNode(id) {
   `;
 }
 
-function promptAddChild(parentId) {
-  const name = window.prompt('Child node name:');
+async function promptAddChild(parentId) {
+  const name = await showModal('Add child node', 'Child name (e.g. signing)');
   if (!name) return;
   const parent = STATE.tree.nodeMap[parentId];
   const nid = parentId+'/'+name;
-  if (STATE.tree.nodeMap[nid]) return;
+  if (STATE.tree.nodeMap[nid]) { toast('Node already exists', 'err'); return; }
   const d = kpFullDerive(parent.pub, parent.scalar, name);
   STATE.tree.nodeMap[nid] = { id:nid, name, pub:d.pub, scalar:d.scalar, parentId, children:[], showKey:false };
   parent.children.push(nid);
   renderTree();
   selectTreeNode(nid);
   saveSt();
+  toast('Added ' + name, 'ok');
 }
 
 function signWithNode(id) {
@@ -872,6 +874,183 @@ function clearAll() {
   location.reload();
 }
 
+// ── Nav toggle (mobile) ──────────────────────────────────────────────────────
+function toggleNav() {
+  const nav = document.querySelector('nav');
+  nav.classList.toggle('open');
+}
+function closeNav() { document.querySelector('nav').classList.remove('open'); }
+const _origShow = show;
+function showAndClose(id) { _origShow(id); closeNav(); }
+
+// ── Toast ────────────────────────────────────────────────────────────────────
+function toast(msg, type='inf') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  $('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ── Modal ────────────────────────────────────────────────────────────────────
+function showModal(title, placeholder='') {
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.className = 'modal-overlay';
+    ov.innerHTML = `<div class="modal-box">
+      <div class="modal-title">${esc(title)}</div>
+      <input class="mono" placeholder="${esc(placeholder)}" id="modal-input" autofocus>
+      <div class="btn-row"><button class="g modal-cancel">Cancel</button><button class="modal-ok">OK</button></div>
+    </div>`;
+    document.body.appendChild(ov);
+    const inp = ov.querySelector('#modal-input');
+    const done = v => { ov.remove(); resolve(v); };
+    ov.querySelector('.modal-cancel').onclick = () => done(null);
+    ov.querySelector('.modal-ok').onclick = () => done(inp.value || null);
+    inp.addEventListener('keydown', e => { if(e.key==='Enter') done(inp.value||null); if(e.key==='Escape') done(null); });
+    ov.addEventListener('click', e => { if(e.target===ov) done(null); });
+    setTimeout(() => inp.focus(), 50);
+  });
+}
+
+// ── TOTP / HOTP ──────────────────────────────────────────────────────────────
+function base32Decode(s) {
+  const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  s = s.replace(/[=\s-]/g,'').toUpperCase();
+  let bits = '';
+  for (const c of s) { const i = A.indexOf(c); if (i >= 0) bits += i.toString(2).padStart(5, '0'); }
+  const out = [];
+  for (let i = 0; i + 8 <= bits.length; i += 8) out.push(parseInt(bits.slice(i, i + 8), 2));
+  return new Uint8Array(out);
+}
+
+function base32Encode(bytes) {
+  const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = '';
+  for (const b of bytes) bits += b.toString(2).padStart(8, '0');
+  let out = '';
+  for (let i = 0; i < bits.length; i += 5) out += A[parseInt(bits.slice(i, i + 5).padEnd(5, '0'), 2)];
+  return out;
+}
+
+async function hmacOTP(secret, counter, digits, alg) {
+  const key = await SC.importKey('raw', secret, { name: 'HMAC', hash: alg }, false, ['sign']);
+  const buf = new ArrayBuffer(8);
+  const dv = new DataView(buf);
+  dv.setUint32(0, Math.floor(counter / 0x100000000));
+  dv.setUint32(4, counter >>> 0);
+  const hmac = new Uint8Array(await SC.sign('HMAC', key, buf));
+  const off = hmac[hmac.length - 1] & 0xf;
+  const code = ((hmac[off] & 0x7f) << 24 | (hmac[off + 1] << 16) | (hmac[off + 2] << 8) | hmac[off + 3]) % (10 ** digits);
+  return code.toString().padStart(digits, '0');
+}
+
+function parseOTPAuth(uri) {
+  try {
+    const u = new URL(uri);
+    const secret = u.searchParams.get('secret') || '';
+    const alg = (u.searchParams.get('algorithm') || 'SHA1').replace('SHA', 'SHA-');
+    const digits = +(u.searchParams.get('digits') || 6);
+    const period = +(u.searchParams.get('period') || 30);
+    const issuer = u.searchParams.get('issuer') || '';
+    const type = u.pathname.startsWith('//totp') ? 'totp' : 'hotp';
+    const counter = +(u.searchParams.get('counter') || 0);
+    return { secret, alg, digits, period, issuer, type, counter };
+  } catch { return null; }
+}
+
+let _totpTimer = null;
+
+function totpModeChange() {
+  $('totp-counter-col').style.display = $('totp-mode').value === 'hotp' ? '' : 'none';
+}
+
+function getTOTPSecret() {
+  const activeTab = document.querySelector('#totp-src-totp-secret.on') ? 'secret'
+    : document.querySelector('#totp-src-totp-uri.on') ? 'uri' : 'tree';
+
+  if (activeTab === 'uri') {
+    const parsed = parseOTPAuth($('totp-uri').value.trim());
+    if (!parsed) return null;
+    $('totp-alg').value = parsed.alg;
+    $('totp-digits').value = parsed.digits;
+    $('totp-period').value = parsed.period;
+    $('totp-mode').value = parsed.type;
+    if (parsed.type === 'hotp') $('totp-counter').value = parsed.counter;
+    totpModeChange();
+    return base32Decode(parsed.secret);
+  }
+  if (activeTab === 'tree') {
+    if (!STATE.masterHex) { toast('Set master seed first', 'err'); return null; }
+    const path = $('totp-kp-path').value.trim() || 'app/auth/totp';
+    const seedBytes = fromHex(STATE.masterHex);
+    let scalar = leToBI(seedBytes) % L, pub = Pt.BASE.multiply(scalar).toRawBytes();
+    for (const seg of path.split('/').filter(Boolean)) { const d = kpFullDerive(pub, scalar, seg); pub = d.pub; scalar = d.scalar; }
+    const secret = pub.slice(0, 20);
+    $('totp-b32').value = base32Encode(secret);
+    return secret;
+  }
+  const b32 = $('totp-b32').value.trim();
+  if (!b32) return null;
+  return base32Decode(b32);
+}
+
+async function startTOTP() {
+  stopTOTP();
+  const secret = getTOTPSecret();
+  if (!secret) return toast('Enter a valid secret', 'err');
+  const mode = $('totp-mode').value;
+  const digits = +$('totp-digits').value;
+  const alg = $('totp-alg').value;
+  const period = +$('totp-period').value || 30;
+
+  if (mode === 'hotp') {
+    const counter = +$('totp-counter').value || 0;
+    const code = await hmacOTP(secret, counter, digits, alg);
+    $('totp-display').innerHTML = `<div class="totp-code">${esc(code)}</div><div style="margin-top:8px;color:var(--dim);font-size:11px">HOTP counter: ${counter}</div>`;
+    $('totp-counter').value = counter + 1;
+    return;
+  }
+
+  async function tick() {
+    const now = Math.floor(Date.now() / 1000);
+    const t = Math.floor(now / period);
+    const remaining = period - (now % period);
+    const pct = (remaining / period) * 100;
+    const code = await hmacOTP(secret, t, digits, alg);
+    const next = await hmacOTP(secret, t + 1, digits, alg);
+    $('totp-display').innerHTML = `
+      <div class="totp-code">${esc(code)}</div>
+      <div class="totp-timer">
+        <div class="totp-bar"><div class="totp-bar-fill" style="width:${pct}%"></div></div>
+        <div class="totp-secs">${remaining}s</div>
+      </div>
+      <div class="totp-next" style="margin-top:8px">next: ${esc(next)}</div>`;
+  }
+  await tick();
+  _totpTimer = setInterval(tick, 500);
+}
+
+function stopTOTP() {
+  if (_totpTimer) { clearInterval(_totpTimer); _totpTimer = null; }
+}
+
+async function verifyTOTP() {
+  const b32 = $('totp-vfy-b32').value.trim();
+  const code = $('totp-vfy-code').value.trim();
+  if (!b32 || !code) return errOut('totp-vfy-out', 'Enter secret and code');
+  const secret = base32Decode(b32);
+  const digits = code.length;
+  const now = Math.floor(Date.now() / 1000);
+  const period = 30;
+  for (let off = -1; off <= 1; off++) {
+    const t = Math.floor(now / period) + off;
+    const gen = await hmacOTP(secret, t, digits, 'SHA-1');
+    if (gen === code) { okOut('totp-vfy-out', 'Code is valid' + (off ? ` (window ${off > 0 ? '+' : ''}${off})` : '')); return; }
+  }
+  errOut('totp-vfy-out', 'Code is INVALID');
+}
+
 // ── Expose to HTML onclick ────────────────────────────────────────────────────
 Object.assign(window, {
   show, switchTab, cp, pipe, pin, useClip, copyMaster, renderClip,
@@ -887,6 +1066,8 @@ Object.assign(window, {
   genECDH, deriveShared,
   doHash, doConvert, genRandom,
   exportState, importState, clearAll,
+  toggleNav, closeNav, toast, showModal,
+  startTOTP, stopTOTP, verifyTOTP, totpModeChange,
   STATE,
 });
 
