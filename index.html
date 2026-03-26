@@ -287,12 +287,101 @@ svg .add-btn text { fill: var(--blue2); font-size: 14px; text-anchor: middle; do
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--s3); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--mut); }
+
+/* ── Toast notifications ─────────────────────────── */
+#toast-container {
+  position: fixed; top: 56px; right: 16px; z-index: 200;
+  display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+}
+.toast {
+  pointer-events: auto; padding: 10px 16px; border-radius: var(--r2);
+  font-size: 12px; display: flex; align-items: center; gap: 8px;
+  animation: toastIn .25s ease, toastOut .3s ease 2.7s forwards;
+  max-width: 360px; box-shadow: 0 4px 16px rgba(0,0,0,.4);
+}
+.toast.ok  { background: var(--green3); border: 1px solid var(--green2); color: var(--green); }
+.toast.err { background: var(--red3); border: 1px solid var(--red2); color: var(--red); }
+.toast.inf { background: var(--s2); border: 1px solid var(--s3); color: var(--dim); }
+@keyframes toastIn  { from { opacity:0; transform:translateX(40px); } }
+@keyframes toastOut { to   { opacity:0; transform:translateX(40px); } }
+
+/* ── Modal overlay ───────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  animation: fadeIn .15s ease;
+}
+.modal-box {
+  background: var(--s1); border: 1px solid var(--s3); border-radius: var(--r2);
+  padding: 20px; min-width: 300px; max-width: 90vw; display: flex; flex-direction: column; gap: 12px;
+}
+.modal-box .modal-title { font-weight: 600; font-size: 14px; }
+.modal-box input { width: 100%; }
+.modal-box .btn-row { justify-content: flex-end; }
+@keyframes fadeIn { from { opacity: 0; } }
+
+/* ── TOTP progress ring ──────────────────────────── */
+.totp-code { font-size: 32px; font-weight: 700; font-family: 'SFMono-Regular', Consolas, monospace; letter-spacing: 6px; text-align: center; color: var(--green); }
+.totp-next { font-size: 18px; font-family: 'SFMono-Regular', Consolas, monospace; letter-spacing: 4px; text-align: center; color: var(--dim); }
+.totp-timer { display: flex; align-items: center; gap: 10px; justify-content: center; }
+.totp-bar { flex: 1; max-width: 200px; height: 4px; background: var(--s3); border-radius: 2px; overflow: hidden; }
+.totp-bar-fill { height: 100%; background: var(--green); transition: width .2s linear; border-radius: 2px; }
+.totp-secs { font-size: 12px; color: var(--dim); font-family: 'SFMono-Regular', Consolas, monospace; min-width: 24px; text-align: right; }
+
+/* ── Hamburger / mobile nav ──────────────────────── */
+#hamburger {
+  display: none; background: none; border: none; color: var(--dim); font-size: 22px;
+  padding: 8px; cursor: pointer; line-height: 1;
+}
+#hamburger:hover { color: var(--txt); background: none; }
+nav.open { display: flex !important; }
+
+/* ── Responsive ──────────────────────────────────── */
+@media (max-width: 1024px) {
+  #tree-layout { grid-template-columns: 1fr !important; }
+  #nd-sidebar { max-height: 300px; }
+  .cols-2, .cols-3 { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+  body { grid-template: 48px 1fr / 1fr; }
+  nav {
+    display: none; position: fixed; top: 48px; left: 0; right: 0; bottom: 0;
+    z-index: 50; background: var(--s1); border-right: none;
+    overflow-y: auto; padding-bottom: 40px;
+  }
+  #hamburger { display: block; }
+  #hdr-clips { display: none; }
+  #active-key-pill { max-width: 140px; }
+  main { padding: 12px; }
+  .card-body { padding: 10px; }
+  .row { flex-direction: column; }
+  .row.nowrap { flex-direction: row; }
+  .col { min-width: 0; }
+  button { min-height: 44px; padding: 10px 16px; font-size: 13px; }
+  .ni { padding: 12px 16px; font-size: 14px; min-height: 44px; }
+  .tab { padding: 10px 14px; min-height: 44px; }
+  input, select, textarea { min-height: 44px; padding: 10px 12px; font-size: 14px; }
+  .ob pre { font-size: 12px; }
+  .btn-row { gap: 8px; }
+  .ob-acts button { min-height: 36px; padding: 4px 10px; }
+  #tree-layout { grid-template-columns: 1fr !important; }
+  #tree-canvas { min-height: 200px !important; overflow: auto; -webkit-overflow-scrolling: touch; }
+}
+@media (max-width: 480px) {
+  #hdr .logo span { display: none; }
+  #active-key-pill { max-width: 100px; font-size: 10px; }
+  #hdr-menu .hdr-btn:not(:last-child) { display: none; }
+  .card-hd { flex-wrap: wrap; gap: 4px; }
+  .modal-box { min-width: auto; margin: 12px; }
+}
 </style>
 </head>
 <body>
 
 <!-- HEADER -->
+<div id="toast-container"></div>
 <div id="hdr">
+  <button id="hamburger" onclick="toggleNav()">☰</button>
   <div class="logo" onclick="show('seed')">⚡ encalc <span>crypto toolkit</span></div>
   <div class="hdr-sep"></div>
   <div id="active-key-pill" onclick="copyMaster()" data-tip="Click to copy full seed">
@@ -330,6 +419,7 @@ svg .add-btn text { fill: var(--blue2); font-size: 14px; text-anchor: middle; do
   <div class="ni"    id="nav-dh"       onclick="show('dh')">      <span class="ic">🤝</span> Key Exchange</div>
   <div class="nsep"></div>
   <div class="ng">Utilities</div>
+  <div class="ni"    id="nav-totp"     onclick="show('totp')">    <span class="ic">🔐</span> 2FA / TOTP</div>
   <div class="ni"    id="nav-hash"     onclick="show('hash')">    <span class="ic">🔢</span> Hash</div>
   <div class="ni"    id="nav-convert"  onclick="show('convert')"> <span class="ic">⚙️</span>  Format Convert</div>
   <div class="ni"    id="nav-random"   onclick="show('random')">  <span class="ic">🎰</span> Random Bytes</div>
@@ -695,6 +785,65 @@ svg .add-btn text { fill: var(--blue2); font-size: 14px; text-anchor: middle; do
       </div>
       <div class="btn-row"><button onclick="deriveShared()">2. Derive Shared Secret →</button></div>
       <div id="dh-out"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TOTP / 2FA ════════════════════════════════════ -->
+<div id="totp" class="panel">
+  <div class="cols-2">
+    <div class="card">
+      <div class="card-hd"><div class="ct">TOTP / HOTP Generator</div></div>
+      <div class="card-body">
+        <div class="tabs" id="totp-src-tabs" style="margin:-14px -14px 10px; border-radius:var(--r2) var(--r2) 0 0">
+          <div class="tab on" onclick="switchTab('totp-src','totp-secret')">Base32 Secret</div>
+          <div class="tab" onclick="switchTab('totp-src','totp-uri')">otpauth:// URI</div>
+          <div class="tab" onclick="switchTab('totp-src','totp-tree')">Keypear Path</div>
+        </div>
+        <div id="totp-src-totp-secret" class="tab-body on" style="gap:8px">
+          <div class="col"><label>Secret (Base32)</label><input id="totp-b32" class="mono" placeholder="JBSWY3DPEHPK3PXP"></div>
+        </div>
+        <div id="totp-src-totp-uri" class="tab-body" style="gap:8px">
+          <div class="col"><label>otpauth:// URI</label><input id="totp-uri" class="mono" placeholder="otpauth://totp/user@example.com?secret=JBSWY3...&issuer=App"></div>
+        </div>
+        <div id="totp-src-totp-tree" class="tab-body" style="gap:8px">
+          <div class="col"><label>Keypear tree path <span class="lh">uses master seed</span></label><input id="totp-kp-path" value="app/auth/totp" placeholder="app/auth/totp"></div>
+        </div>
+        <div class="row">
+          <div class="col"><label>Algorithm</label><select id="totp-alg" class="prose"><option value="SHA-1">SHA-1</option><option value="SHA-256">SHA-256</option><option value="SHA-512">SHA-512</option></select></div>
+          <div class="col"><label>Digits</label><select id="totp-digits" class="prose"><option value="6">6</option><option value="8">8</option></select></div>
+          <div class="col"><label>Period (sec)</label><input id="totp-period" type="number" value="30" min="10" max="120"></div>
+        </div>
+        <div class="row">
+          <div class="col"><label>Mode</label><select id="totp-mode" class="prose" onchange="totpModeChange()"><option value="totp">TOTP (time-based)</option><option value="hotp">HOTP (counter)</option></select></div>
+          <div class="col" id="totp-counter-col" style="display:none"><label>Counter</label><input id="totp-counter" type="number" value="0" min="0"></div>
+        </div>
+        <div class="btn-row">
+          <button onclick="startTOTP()">🔐 Generate Code</button>
+          <button class="g" onclick="stopTOTP()">Stop</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><div class="ct">Live Code</div></div>
+      <div class="card-body" style="align-items:center; min-height:160px; justify-content:center">
+        <div id="totp-display" style="text-align:center">
+          <div class="info-box">Enter a secret and click Generate to start.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hd"><div class="ct">Verify Code</div></div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col w2"><label>Secret (Base32)</label><input id="totp-vfy-b32" class="mono" placeholder="JBSWY3DPEHPK3PXP"></div>
+        <div class="col"><label>Code</label><input id="totp-vfy-code" class="mono" placeholder="123456"></div>
+        <div class="col fx va-end"><button onclick="verifyTOTP()">Verify</button></div>
+      </div>
+      <div id="totp-vfy-out"></div>
     </div>
   </div>
 </div>
