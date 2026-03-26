@@ -953,7 +953,7 @@ function parseOTPAuth(uri) {
     const digits = +(u.searchParams.get('digits') || 6);
     const period = +(u.searchParams.get('period') || 30);
     const issuer = u.searchParams.get('issuer') || '';
-    const type = u.pathname.startsWith('//totp') ? 'totp' : 'hotp';
+    const type = u.hostname === 'totp' || u.pathname.startsWith('//totp') ? 'totp' : 'hotp';
     const counter = +(u.searchParams.get('counter') || 0);
     return { secret, alg, digits, period, issuer, type, counter };
   } catch { return null; }
