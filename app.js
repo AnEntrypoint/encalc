@@ -6,7 +6,7 @@ import { sha512 } from 'https://cdn.jsdelivr.net/npm/@noble/hashes@1.8.0/esm/sha
 const SC = crypto.subtle, ENC = new TextEncoder(), DEC = new TextDecoder();
 const $ = id => document.getElementById(id);
 const toHex = b => Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2,'0')).join('');
-const fromHex = h => { const s = h.replace(/\s/g,''); return new Uint8Array(s.match(/.{2}/g).map(b=>parseInt(b,16))); };
+const fromHex = h => { const s = h.replace(/\s/g,''); if (!s) return new Uint8Array(0); return new Uint8Array(s.match(/.{2}/g).map(b=>parseInt(b,16))); };
 const toB64  = b => btoa(String.fromCharCode(...new Uint8Array(b)));
 const fromB64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
 const toPem  = (t,b) => `-----BEGIN ${t}-----\n${toB64(b).match(/.{1,64}/g).join('\n')}\n-----END ${t}-----`;
