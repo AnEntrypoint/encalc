@@ -23,7 +23,7 @@ const ENC = new TextEncoder();
 
 // ── Keypear math (same as app.js after fix) ───────────────────────────────────
 const L = 0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3edn;
-const Pt = ed25519.ExtendedPoint;
+const Pt = ed25519.Point;
 const leToBI = b => { let n=0n; for(let i=b.length-1;i>=0;i--) n=(n<<8n)|BigInt(b[i]); return n; };
 const biToLE = (n,len) => { const a=new Uint8Array(len); for(let i=0;i<len;i++){a[i]=Number(n&0xffn);n>>=8n;} return a; };
 
@@ -33,23 +33,23 @@ function kpTweak(pub, name) {
   const h = sha512(seed).slice(0, 32);
   h[31] &= 0x7f;  // clear bit 255 only
   const scalar = leToBI(h);
-  return { scalar, pub: Pt.BASE.multiply(scalar % L).toRawBytes() };
+  return { scalar, pub: Pt.BASE.multiply(scalar % L).toBytes() };
 }
 function kpPubDerive(parentPub, name) {
   const t = kpTweak(parentPub, name);
-  return Pt.fromHex(toHex(parentPub)).add(Pt.fromHex(toHex(t.pub))).toRawBytes();
+  return Pt.fromHex(toHex(parentPub)).add(Pt.fromHex(toHex(t.pub))).toBytes();
 }
 function kpFullDerive(parentPub, parentScalar, name) {
   const t = kpTweak(parentPub, name);
   const cs = (parentScalar + t.scalar) % L;
-  return { pub: Pt.BASE.multiply(cs).toRawBytes(), scalar: cs };
+  return { pub: Pt.BASE.multiply(cs).toBytes(), scalar: cs };
 }
 async function kpSign(scalar, msg) {
   const nb = typeof msg==='string' ? ENC.encode(msg) : msg;
-  const pubBytes = Pt.BASE.multiply(scalar).toRawBytes();
+  const pubBytes = Pt.BASE.multiply(scalar).toBytes();
   const scalarBytes = biToLE(scalar, 32);
   const r = leToBI(blake2b(new Uint8Array([...scalarBytes, ...nb]), {dkLen:64})) % L;
-  const R = Pt.BASE.multiply(r).toRawBytes();
+  const R = Pt.BASE.multiply(r).toBytes();
   const kBytes = new Uint8Array(await webcrypto.subtle.digest('SHA-512', new Uint8Array([...R, ...pubBytes, ...nb])));
   const k = leToBI(kBytes) % L;
   const S = (r + k * scalar) % L;
@@ -86,7 +86,7 @@ function kpRoot(seed) {
   // synthetic seed such that its expanded scalar matches our raw-seed scalar.
   // Easier: just use keypear's raw-key constructor with { publicKey, scalar }.
   const scalar = leToBI(seed) % L;
-  const pub = Pt.BASE.multiply(scalar).toRawBytes();
+  const pub = Pt.BASE.multiply(scalar).toBytes();
   return { scalar, pub };
 }
 
@@ -119,7 +119,7 @@ console.log('\n── Test 1: kpTweak clamping vs keypear tweakKeyPair ──');
   // Also verify our tweak point: kpDerivedPub = root.pub + tweak.pub
   const rootPt = Pt.fromHex(toHex(root.pub));
   const tweakPt = Pt.fromHex(toHex(ourTweak.pub));
-  const sumPt = rootPt.add(tweakPt).toRawBytes();
+  const sumPt = rootPt.add(tweakPt).toBytes();
   assertEq(sumPt, kpDerivedPub, 'root + tweak_point == keypear derived pub');
 }
 
